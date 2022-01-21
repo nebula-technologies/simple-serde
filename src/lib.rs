@@ -22,7 +22,7 @@ use byteorder::LE;
 use serde::__private::de::TagOrContentField::Content;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::convert::{TryFrom, TryInto};
+use std::convert::{Infallible, TryFrom, TryInto};
 use zvariant::{from_slice, to_bytes, EncodingContext as Context, Type};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -89,6 +89,7 @@ impl TryFrom<&str> for ContentType {
 
 #[derive(Debug)]
 pub enum Error {
+    Infallible,
     ByteToUTF8ConversionFailure(Utf8Error),
     UnknownContentTypeMatchFromStr(String),
     BsonSerializationFailure(bson::ser::Error),
@@ -110,6 +111,11 @@ pub enum Error {
     YamlError(serde_yaml::Error),
     XmlError(serde_xml_rs::Error),
     TypeDoesNotSupportSerialization(ContentType),
+}
+impl From<std::convert::Infallible> for Error {
+    fn from(_: Infallible) -> Self {
+        Error::Infallible
+    }
 }
 
 impl From<Utf8Error> for Error {
@@ -212,7 +218,7 @@ pub trait SimpleEncoder
 where
     Self: serde::Serialize,
 {
-    fn encode<F: TryInto<ContentType, Error = crate::Error>>(
+    fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
         &self,
         content_type: F,
     ) -> Result<Vec<u8>>;
@@ -222,7 +228,7 @@ impl<T> SimpleEncoder for T
 where
     T: Serialize,
 {
-    fn encode<F: TryInto<ContentType, Error = crate::Error>>(
+    fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
         &self,
         content_type: F,
     ) -> Result<Vec<u8>> {
@@ -260,7 +266,7 @@ where
                 .map(|s| s.as_bytes().to_vec())
                 .map_err(Error::from)
         };
-        match content_type.try_into()? {
+        match content_type.try_into().map_err(|e| e.into())? {
             ContentType::Bson => bson(self),
             ContentType::Cbor => cbor(self),
             ContentType::FlexBuffers => flexbuffers(self),
@@ -280,14 +286,20 @@ where
 }
 
 pub trait SimpleDecoder<T> {
-    fn decode<F: TryInto<ContentType, Error = crate::Error>>(&self, content_type: F) -> Result<T>;
+    fn decode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<T>;
 }
 
 impl<T> SimpleDecoder<T> for &[u8]
 where
     T: DeserializeOwned,
 {
-    fn decode<F: TryInto<ContentType, Error = crate::Error>>(&self, content_type: F) -> Result<T> {
+    fn decode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<T> {
         let bson = |o: &[u8]| -> Result<T> { bson::from_slice(o).map_err(Error::from) };
         let cbor = |o: &[u8]| -> Result<T> { serde_cbor::from_slice(o).map_err(Error::from) };
         let flexbuffers =
@@ -318,7 +330,7 @@ where
                 .map_err(Error::from)
                 .and_then(|str| serde_xml_rs::from_str(str).map_err(Error::from))
         };
-        match content_type.try_into()? {
+        match content_type.try_into().map_err(|e| e.into())? {
             ContentType::Bson => bson(self),
             ContentType::Cbor => cbor(self),
             ContentType::FlexBuffers => flexbuffers(self),
