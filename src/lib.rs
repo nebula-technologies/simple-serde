@@ -1,6 +1,8 @@
 extern crate bson;
 extern crate envy;
 extern crate flexbuffers;
+#[cfg(feature = "http_header_value")]
+extern crate http;
 extern crate json5;
 extern crate postcard;
 extern crate rmp_serde;
@@ -19,6 +21,9 @@ extern crate zvariant;
 use std::str::{from_utf8, Utf8Error};
 
 use byteorder::LE;
+use http::header::ToStrError;
+#[cfg(feature = "http_header_value")]
+use http::HeaderValue;
 use serde::__private::de::TagOrContentField::Content;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -87,6 +92,17 @@ impl TryFrom<&str> for ContentType {
     }
 }
 
+#[cfg(feature = "http_header_value")]
+impl TryFrom<HeaderValue> for ContentType {
+    type Error = crate::Error;
+
+    fn try_from(h: HeaderValue) -> std::result::Result<ContentType, Self::Error> {
+        h.to_str()
+            .map_err(Error::from)
+            .and_then(ContentType::try_from)
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     Infallible,
@@ -111,7 +127,17 @@ pub enum Error {
     YamlError(serde_yaml::Error),
     XmlError(serde_xml_rs::Error),
     TypeDoesNotSupportSerialization(ContentType),
+    #[cfg(feature = "http_header_value")]
+    FailedConvertingHeaderValueToContentType(http::header::ToStrError),
 }
+
+#[cfg(feature = "http_header_value")]
+impl From<http::header::ToStrError> for Error {
+    fn from(e: ToStrError) -> Self {
+        Self::FailedConvertingHeaderValueToContentType(e)
+    }
+}
+
 impl From<std::convert::Infallible> for Error {
     fn from(_: Infallible) -> Self {
         Error::Infallible
