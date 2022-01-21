@@ -1018,7 +1018,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "simple_serde"
+name = "simple-serde"
 version = "0.1.0"
 dependencies = [
  "avro-rs",

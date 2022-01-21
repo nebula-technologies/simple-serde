@@ -1,5 +1,5 @@
 [package]
-name = "simple_serde"
+name = "simple-serde"
 version = "0.1.0"
 edition = "2021"
 authors = ["Anders Blenstrup-Pedersen <abp-git@ryuu.technology>"]
