@@ -2,6 +2,13 @@
 name = "simple_serde"
 version = "0.1.0"
 edition = "2021"
+authors = ["Anders Blenstrup-Pedersen <abp-git@ryuu.technology>"]
+description = "A wrapper around multiple serde libraries making it easy to encode and decode multiple types"
+readme = "README.md"
+categories = ["serialization", "deserialization", "Encoding", "Decoding"]
+license = "MIT"
+repository = "https://github.com/nebula-technologies/simple-serde"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
