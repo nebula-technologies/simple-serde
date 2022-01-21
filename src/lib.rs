@@ -1,7 +1,7 @@
 extern crate bson;
 extern crate envy;
 extern crate flexbuffers;
-#[cfg(feature = "http_header_value")]
+#[cfg(feature = "http")]
 extern crate http;
 extern crate json5;
 extern crate postcard;
@@ -22,7 +22,7 @@ use std::str::{from_utf8, Utf8Error};
 
 use byteorder::LE;
 use http::header::ToStrError;
-#[cfg(feature = "http_header_value")]
+#[cfg(feature = "http")]
 use http::HeaderValue;
 use serde::__private::de::TagOrContentField::Content;
 use serde::de::DeserializeOwned;
@@ -92,7 +92,7 @@ impl TryFrom<&str> for ContentType {
     }
 }
 
-#[cfg(feature = "http_header_value")]
+#[cfg(feature = "http")]
 impl TryFrom<HeaderValue> for ContentType {
     type Error = crate::Error;
 
@@ -127,11 +127,11 @@ pub enum Error {
     YamlError(serde_yaml::Error),
     XmlError(serde_xml_rs::Error),
     TypeDoesNotSupportSerialization(ContentType),
-    #[cfg(feature = "http_header_value")]
+    #[cfg(feature = "http")]
     FailedConvertingHeaderValueToContentType(http::header::ToStrError),
 }
 
-#[cfg(feature = "http_header_value")]
+#[cfg(feature = "http")]
 impl From<http::header::ToStrError> for Error {
     fn from(e: ToStrError) -> Self {
         Self::FailedConvertingHeaderValueToContentType(e)

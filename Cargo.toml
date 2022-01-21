@@ -13,7 +13,6 @@ repository = "https://github.com/nebula-technologies/simple-serde"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
-http_header_value = []
 
 [dependencies]
 avro-rs = { version = "0.13.0", features = ["snappy"] }
