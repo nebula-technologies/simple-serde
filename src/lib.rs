@@ -16,19 +16,14 @@ extern crate serde_pickle;
 extern crate serde_qs;
 extern crate serde_xml_rs;
 extern crate serde_yaml;
-extern crate zvariant;
-
-use std::str::{from_utf8, Utf8Error};
 
 use byteorder::LE;
-use http::header::ToStrError;
 #[cfg(feature = "http")]
-use http::HeaderValue;
-use serde::__private::de::TagOrContentField::Content;
+use http::{header::ToStrError, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::{Infallible, TryFrom, TryInto};
-use zvariant::{from_slice, to_bytes, EncodingContext as Context, Type};
+use std::str::{from_utf8, Utf8Error};
 
 pub type Result<T> = std::result::Result<T, Error>;
 

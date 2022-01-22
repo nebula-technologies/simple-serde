@@ -1042,7 +1042,7 @@ dependencies = [
 
 [[package]]
 name = "simple_serde"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "avro-rs",
  "bincode",
@@ -1065,7 +1065,6 @@ dependencies = [
  "serde_qs",
  "serde_yaml",
  "toml",
- "zvariant",
 ]
 
 [[package]]
@@ -1092,12 +1091,6 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
-name = "static_assertions"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strum"
@@ -1287,29 +1280,4 @@ dependencies = [
  "proc-macro2",
  "syn",
  "synstructure",
-]
-
-[[package]]
-name = "zvariant"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbb31b009e0b0c4f2c1283c9c23129e4f76020da4b3c4dfa032abfbfe30a2c02"
-dependencies = [
- "byteorder",
- "libc",
- "serde",
- "static_assertions",
- "zvariant_derive",
-]
-
-[[package]]
-name = "zvariant_derive"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5295bdc2688c7239423889191d730ad071f814dc36c48edf7cda23f38dd28b2a"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
 ]
