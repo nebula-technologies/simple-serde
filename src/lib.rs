@@ -1,5 +1,4 @@
 extern crate bson;
-extern crate envy;
 extern crate flexbuffers;
 #[cfg(feature = "http")]
 extern crate http;
@@ -17,13 +16,27 @@ extern crate serde_qs;
 extern crate serde_xml_rs;
 extern crate serde_yaml;
 
-use byteorder::LE;
+pub mod prelude {
+    pub extern crate bson;
+    pub extern crate flexbuffers;
+    pub extern crate json5;
+    pub extern crate postcard;
+    pub extern crate rmp_serde as messagepack;
+    pub extern crate ron;
+    pub extern crate serde_cbor as cbor;
+    pub extern crate serde_json as json;
+    pub extern crate serde_lexpr as lexpr;
+    pub extern crate serde_pickle as pickle;
+    pub extern crate serde_qs as url;
+    pub extern crate serde_xml_rs as xml;
+    pub extern crate serde_yaml as yaml;
+}
 #[cfg(feature = "http")]
 use http::{header::ToStrError, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::{Infallible, TryFrom, TryInto};
-use std::str::{from_utf8, Utf8Error};
+use std::str::Utf8Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
