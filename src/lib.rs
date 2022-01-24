@@ -23,6 +23,7 @@ pub mod prelude {
     pub extern crate postcard;
     pub extern crate rmp_serde as messagepack;
     pub extern crate ron;
+    pub extern crate serde;
     pub extern crate serde_cbor as cbor;
     pub extern crate serde_json as json;
     pub extern crate serde_lexpr as lexpr;
