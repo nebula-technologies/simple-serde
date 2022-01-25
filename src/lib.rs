@@ -153,6 +153,29 @@ impl TryIntoHeaderValue for ContentType {
         })
     }
 }
+#[cfg(feature = "http")]
+impl TryIntoHeaderValue for &ContentType {
+    type Error = http::header::InvalidHeaderValue;
+
+    fn try_into_value(self) -> std::result::Result<HeaderValue, Self::Error> {
+        HeaderValue::from_str(match self {
+            ContentType::Bson => "application/x-bson",
+            ContentType::Cbor => "application/x-cbor",
+            ContentType::FlexBuffers => "application/x-flexbuffers",
+            ContentType::Json => "application/json",
+            ContentType::Json5 => "application/json5",
+            ContentType::Lexpr => "application/x-lexpr",
+            ContentType::MessagePack => "application/x-messagepack",
+            ContentType::Pickle => "application/x-pickle",
+            ContentType::Postcard => "application/x-postcard",
+            ContentType::Ron => "application/ron",
+            ContentType::Toml => "application/toml",
+            ContentType::Url => "application/x-url",
+            ContentType::Yaml => "application/yaml",
+            ContentType::Xml => "application/xml",
+        })
+    }
+}
 
 #[cfg(feature = "http")]
 impl TryFrom<HeaderValue> for ContentType {
