@@ -8,6 +8,7 @@ extern crate rmp_serde;
 extern crate ron;
 extern crate serde;
 extern crate serde_cbor;
+#[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_lexpr;
@@ -23,8 +24,8 @@ pub mod prelude {
     pub extern crate postcard;
     pub extern crate rmp_serde as messagepack;
     pub extern crate ron;
-    pub extern crate serde;
     pub extern crate serde_cbor as cbor;
+    pub extern crate serde_derive;
     pub extern crate serde_json as json;
     pub extern crate serde_lexpr as lexpr;
     pub extern crate serde_pickle as pickle;
@@ -106,6 +107,17 @@ impl TryFrom<HeaderValue> for ContentType {
     type Error = crate::Error;
 
     fn try_from(h: HeaderValue) -> std::result::Result<ContentType, Self::Error> {
+        h.to_str()
+            .map_err(Error::from)
+            .and_then(ContentType::try_from)
+    }
+}
+
+#[cfg(feature = "http")]
+impl TryFrom<&HeaderValue> for ContentType {
+    type Error = crate::Error;
+
+    fn try_from(h: &HeaderValue) -> std::result::Result<ContentType, Self::Error> {
         h.to_str()
             .map_err(Error::from)
             .and_then(ContentType::try_from)
