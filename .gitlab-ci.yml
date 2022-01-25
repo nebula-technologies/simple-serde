@@ -1,3 +1,6 @@
+variables:
+  CARGO_AUDIT_IGNORE: RUSTSEC-2020-0159
+
 include:
   - project: ci-cd/rust
     ref: master
