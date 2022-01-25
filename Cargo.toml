@@ -1,6 +1,6 @@
 [package]
 name = "simple_serde"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2021"
 authors = ["Anders Blenstrup-Pedersen <abp-git@ryuu.technology>"]
 description = "A wrapper around multiple serde libraries making it easy to encode and decode multiple types"
@@ -8,6 +8,7 @@ readme = "README.md"
 categories = ["serialization", "deserialization", "Encoding", "Decoding"]
 license = "MIT"
 repository = "https://github.com/nebula-technologies/simple-serde"
+resolver = "2"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -32,4 +33,9 @@ serde_json = "1.0.75"
 serde_qs = "0.8.5"
 serde_yaml = "0.8.23"
 toml = "0.5.8"
-http = { version = "0.2.6", optional = true }
+[dependencies.actix-http]
+version = "3.0.0-beta.19"
+
+[dependencies.http]
+version = "0.2.6"
+optional = true

@@ -33,6 +33,9 @@ pub mod prelude {
     pub extern crate serde_xml_rs as xml;
     pub extern crate serde_yaml as yaml;
 }
+use crate::Error::InvalidHeaderValue;
+#[cfg(feature = "http")]
+use actix_http::header::TryIntoHeaderValue;
 #[cfg(feature = "http")]
 use http::{header::ToStrError, HeaderValue};
 use serde::de::DeserializeOwned;
@@ -126,8 +129,32 @@ impl TryFrom<&ContentType> for ContentType {
 }
 
 #[cfg(feature = "http")]
+impl TryIntoHeaderValue for ContentType {
+    type Error = http::header::InvalidHeaderValue;
+
+    fn try_into_value(self) -> std::result::Result<HeaderValue, Self::Error> {
+        HeaderValue::from_str(match self {
+            ContentType::Bson => "application/x-bson",
+            ContentType::Cbor => "application/x-cbor",
+            ContentType::FlexBuffers => "application/x-flexbuffers",
+            ContentType::Json => "application/json",
+            ContentType::Json5 => "application/json5",
+            ContentType::Lexpr => "application/x-lexpr",
+            ContentType::MessagePack => "application/x-messagepack",
+            ContentType::Pickle => "application/x-pickle",
+            ContentType::Postcard => "application/x-postcard",
+            ContentType::Ron => "application/ron",
+            ContentType::Toml => "application/toml",
+            ContentType::Url => "application/x-url",
+            ContentType::Yaml => "application/yaml",
+            ContentType::Xml => "application/xml",
+        })
+    }
+}
+
+#[cfg(feature = "http")]
 impl TryFrom<HeaderValue> for ContentType {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(h: HeaderValue) -> std::result::Result<ContentType, Self::Error> {
         h.to_str()
@@ -138,7 +165,7 @@ impl TryFrom<HeaderValue> for ContentType {
 
 #[cfg(feature = "http")]
 impl TryFrom<&HeaderValue> for ContentType {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(h: &HeaderValue) -> std::result::Result<ContentType, Self::Error> {
         h.to_str()
@@ -173,6 +200,15 @@ pub enum Error {
     TypeDoesNotSupportSerialization(ContentType),
     #[cfg(feature = "http")]
     FailedConvertingHeaderValueToContentType(http::header::ToStrError),
+    #[cfg(feature = "http")]
+    InvalidHeaderValue(http::header::InvalidHeaderValue),
+}
+
+#[cfg(feature = "http")]
+impl From<http::header::InvalidHeaderValue> for Error {
+    fn from(e: http::header::InvalidHeaderValue) -> Self {
+        Self::InvalidHeaderValue(e)
+    }
 }
 
 #[cfg(feature = "http")]
