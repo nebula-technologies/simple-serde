@@ -102,6 +102,29 @@ impl TryFrom<&str> for ContentType {
     }
 }
 
+impl TryFrom<&ContentType> for ContentType {
+    type Error = crate::Error;
+
+    fn try_from(h: &ContentType) -> std::result::Result<ContentType, Self::Error> {
+        match h {
+            Self::Bson => Ok(Self::Bson),
+            Self::Cbor => Ok(Self::Cbor),
+            Self::FlexBuffers => Ok(Self::FlexBuffers),
+            Self::Json => Ok(Self::Json),
+            Self::Json5 => Ok(Self::Json5),
+            Self::Lexpr => Ok(Self::Lexpr),
+            Self::MessagePack => Ok(Self::MessagePack),
+            Self::Pickle => Ok(Self::Pickle),
+            Self::Postcard => Ok(Self::Postcard),
+            Self::Ron => Ok(Self::Ron),
+            Self::Toml => Ok(Self::Toml),
+            Self::Url => Ok(Self::Url),
+            Self::Yaml => Ok(Self::Yaml),
+            Self::Xml => Ok(Self::Xml),
+        }
+    }
+}
+
 #[cfg(feature = "http")]
 impl TryFrom<HeaderValue> for ContentType {
     type Error = crate::Error;
