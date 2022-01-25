@@ -33,6 +33,8 @@ pub mod prelude {
     pub extern crate serde_xml_rs as xml;
     pub extern crate serde_yaml as yaml;
 }
+
+#[cfg(feature = "http")]
 use crate::Error::InvalidHeaderValue;
 #[cfg(feature = "http")]
 use actix_http::header::TryIntoHeaderValue;
