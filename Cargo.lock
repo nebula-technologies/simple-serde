@@ -1404,6 +1404,7 @@ dependencies = [
  "actix-http",
  "avro-rs",
  "bson",
+ "derive_more",
  "flexbuffers",
  "http",
  "json5",

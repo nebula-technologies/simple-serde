@@ -38,6 +38,7 @@ pub mod prelude {
 use crate::Error::InvalidHeaderValue;
 #[cfg(feature = "http")]
 use actix_http::header::TryIntoHeaderValue;
+use derive_more::Display;
 #[cfg(feature = "http")]
 use http::{header::ToStrError, HeaderValue};
 use serde::de::DeserializeOwned;
@@ -199,33 +200,57 @@ impl TryFrom<&HeaderValue> for ContentType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum Error {
+    #[display(fmt = "Infallible - This error should have been infallible")]
     Infallible,
+    #[display(fmt = "Converting Raw Data to UTF8 failed: {}", _0)]
     ByteToUTF8ConversionFailure(Utf8Error),
+    #[display(fmt = "Unknown content type match from str: {}", _0)]
     UnknownContentTypeMatchFromStr(String),
+    #[display(fmt = "BSON encoder/decoder error: {}", _0)]
     BsonSerializationFailure(bson::ser::Error),
+    #[display(fmt = "BSON encode/decoder error: {}", _0)]
     BsonDeserializationFailure(bson::de::Error),
+    #[display(fmt = "CBOR encoder/decoder error: {}", _0)]
     CborFailure(serde_cbor::Error),
+    #[display(fmt = "Flexbuffers encoder/decoder error: {}", _0)]
     FlexBuffersSerializationFailure(flexbuffers::SerializationError),
+    #[display(fmt = "Flexbuffers encoder/decoder error: {}", _0)]
     FlexBuffersDeserializationFailure(flexbuffers::DeserializationError),
+    #[display(fmt = "JSON encoder/decoder error: {}", _0)]
     JsonError(serde_json::Error),
+    #[display(fmt = "JSON5 encoder/decoder error: {}", _0)]
     Json5Error(json5::Error),
+    #[display(fmt = "LEXPR encoder/decoder error: {}", _0)]
     LexprError(serde_lexpr::Error),
+    #[display(fmt = "MessagePack encoder/decoder error: {}", _0)]
     MessagePackEncodeError(rmp_serde::encode::Error),
+    #[display(fmt = "MessagePack encoder/decoder error: {}", _0)]
     MessagePackDecodeError(rmp_serde::decode::Error),
+    #[display(fmt = "Pickle encoder/decoder error: {}", _0)]
     PickleError(serde_pickle::Error),
+    #[display(fmt = "Postcard encoder/decoder error: {}", _0)]
     PostcardError(postcard::Error),
+    #[display(fmt = "RON encoder/decoder error: {}", _0)]
     RonError(ron::Error),
+    #[display(fmt = "TOML encoder/decoder error: {}", _0)]
     TomlSerializationFailure(toml::ser::Error),
+    #[display(fmt = "TOML encoder/decoder error: {}", _0)]
     TomlDeserializationFailure(toml::de::Error),
+    #[display(fmt = "URL encoder/decoder error: {}", _0)]
     UrlEncodingFailure(serde_qs::Error),
+    #[display(fmt = "YAML encoder/decoder error: {}", _0)]
     YamlError(serde_yaml::Error),
+    #[display(fmt = "XML encoder/decoder error: {}", _0)]
     XmlError(serde_xml_rs::Error),
+    #[display(fmt = "Type is not supported for encoding/decoding: {:?}", _0)]
     TypeDoesNotSupportSerialization(ContentType),
     #[cfg(feature = "http")]
+    #[display(fmt = "Failed to convert `HeaderValue` to a ContentType: {}", _0)]
     FailedConvertingHeaderValueToContentType(http::header::ToStrError),
     #[cfg(feature = "http")]
+    #[display(fmt = "Invalid Header Value found: {}", _0)]
     InvalidHeaderValue(http::header::InvalidHeaderValue),
 }
 
