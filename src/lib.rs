@@ -49,6 +49,7 @@ use serde_xml_rs::Error::FromUtf8Error;
 use std::convert::{Infallible, TryFrom, TryInto};
 use std::ops::{Deref, DerefMut};
 use std::str::Utf8Error;
+use std::sync::Arc;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -384,6 +385,127 @@ impl From<serde_xml_rs::Error> for Error {
     }
 }
 
+pub trait TryToString {
+    type Error;
+    fn try_to_string(&self) -> std::result::Result<String, Self::Error>;
+}
+
+pub trait SimpleEncoder
+where
+    Self: serde::Serialize,
+{
+    fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<Encoded>;
+}
+
+impl<T> SimpleEncoder for T
+where
+    T: Serialize,
+{
+    fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<Encoded> {
+        use std::str::from_utf8;
+        let bson = |o: &T| -> Result<Encoded> { bson::to_vec(o).try_into() };
+        let cbor = |o: &T| -> Result<Encoded> { serde_cbor::to_vec(o).try_into() };
+        let flexbuffers = |o: &T| -> Result<Encoded> { flexbuffers::to_vec(o).try_into() };
+        let json = |o: &T| -> Result<Encoded> { serde_json::to_vec(o).try_into() };
+        let json5 = |o: &T| -> Result<Encoded> { json5::to_string(o).try_into() };
+        let lexpr = |o: &T| -> Result<Encoded> { serde_lexpr::to_vec(o).try_into() };
+        let message_pack = |o: &T| -> Result<Encoded> { rmp_serde::to_vec(o).try_into() };
+        let pickle =
+            |o: &T| -> Result<Encoded> { serde_pickle::to_vec(o, Default::default()).try_into() };
+        let postcard = |o: &T| -> Result<Encoded> { postcard::to_allocvec(o).try_into() };
+        let ron = |o: &T| -> Result<Encoded> { ron::to_string(o).try_into() };
+        let toml = |o: &T| -> Result<Encoded> { toml::to_vec(o).try_into() };
+        let url = |o: &T| -> Result<Encoded> { serde_qs::to_string(o).try_into() };
+        let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_vec(o).try_into() };
+        let xml = |o: &T| -> Result<Encoded> { serde_xml_rs::to_string(o).try_into() };
+        match content_type.try_into().map_err(|e| e.into())? {
+            ContentType::Bson => bson(self),
+            ContentType::Cbor => cbor(self),
+            ContentType::FlexBuffers => flexbuffers(self),
+            ContentType::Json => json(self),
+            ContentType::Json5 => json5(self),
+            ContentType::Lexpr => lexpr(self),
+            ContentType::MessagePack => message_pack(self),
+            ContentType::Pickle => pickle(self),
+            ContentType::Postcard => postcard(self),
+            ContentType::Ron => ron(self),
+            ContentType::Toml => toml(self),
+            ContentType::Url => url(self),
+            ContentType::Yaml => yaml(self),
+            ContentType::Xml => xml(self),
+        }
+    }
+}
+
+pub trait SimpleDecoder<T> {
+    fn decode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<T>;
+}
+
+impl<T> SimpleDecoder<Decoded<T>> for &[u8]
+where
+    T: DeserializeOwned,
+{
+    fn decode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<Decoded<T>> {
+        let bson = |o: &[u8]| -> Result<Decoded<T>> { bson::from_slice(o).try_into() };
+        let cbor = |o: &[u8]| -> Result<Decoded<T>> { serde_cbor::from_slice(o).try_into() };
+        let flexbuffers =
+            |o: &[u8]| -> Result<Decoded<T>> { flexbuffers::from_slice(o).try_into() };
+        let json = |o: &[u8]| -> Result<Decoded<T>> { serde_json::from_slice(o).try_into() };
+        let json5 = |o: &[u8]| -> Result<Decoded<T>> {
+            std::str::from_utf8(o)
+                .map_err(Error::from)
+                .and_then(|str| json5::from_str(str).try_into())
+        };
+        let lexpr = |o: &[u8]| -> Result<Decoded<T>> { serde_lexpr::from_slice(o).try_into() };
+        let message_pack = |o: &[u8]| -> Result<Decoded<T>> { rmp_serde::from_slice(o).try_into() };
+        let pickle = |o: &[u8]| -> Result<Decoded<T>> {
+            serde_pickle::from_slice(o, Default::default()).try_into()
+        };
+        let postcard = |o: &[u8]| -> Result<Decoded<T>> { postcard::from_bytes(o).try_into() };
+        let ron = |o: &[u8]| -> Result<Decoded<T>> {
+            std::str::from_utf8(o)
+                .map_err(Error::from)
+                .and_then(|str| ron::from_str(str).try_into())
+        };
+        let toml = |o: &[u8]| -> Result<Decoded<T>> { toml::from_slice(o).try_into() };
+        let url = |o: &[u8]| -> Result<Decoded<T>> { serde_qs::from_bytes(o).try_into() };
+        let yaml = |o: &[u8]| -> Result<Decoded<T>> { serde_yaml::from_slice(o).try_into() };
+        let xml = |o: &[u8]| -> Result<Decoded<T>> {
+            std::str::from_utf8(o)
+                .map_err(Error::from)
+                .and_then(|str| serde_xml_rs::from_str(str).try_into())
+        };
+        match content_type.try_into().map_err(|e| e.into())? {
+            ContentType::Bson => bson(self),
+            ContentType::Cbor => cbor(self),
+            ContentType::FlexBuffers => flexbuffers(self),
+            ContentType::Json => json(self),
+            ContentType::Json5 => json5(self),
+            ContentType::Lexpr => lexpr(self),
+            ContentType::MessagePack => message_pack(self),
+            ContentType::Pickle => pickle(self),
+            ContentType::Postcard => postcard(self),
+            ContentType::Ron => ron(self),
+            ContentType::Toml => toml(self),
+            ContentType::Url => url(self),
+            ContentType::Yaml => yaml(self),
+            ContentType::Xml => xml(self),
+        }
+    }
+}
+
 pub struct Encoded {
     inner: Vec<u8>,
 }
@@ -489,125 +611,52 @@ impl TryToString for Encoded {
     }
 }
 
-pub trait TryToString {
-    type Error;
-    fn try_to_string(&self) -> std::result::Result<String, Self::Error>;
-}
-
-pub trait SimpleEncoder
-where
-    Self: serde::Serialize,
-{
-    fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
-        &self,
-        content_type: F,
-    ) -> Result<Encoded>;
-}
-
-impl<T> SimpleEncoder for T
-where
-    T: Serialize,
-{
-    fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
-        &self,
-        content_type: F,
-    ) -> Result<Encoded> {
-        use std::str::from_utf8;
-        let bson = |o: &T| -> Result<Encoded> { bson::to_vec(o).try_into() };
-        let cbor = |o: &T| -> Result<Encoded> { serde_cbor::to_vec(o).try_into() };
-        let flexbuffers = |o: &T| -> Result<Encoded> { flexbuffers::to_vec(o).try_into() };
-        let json = |o: &T| -> Result<Encoded> { serde_json::to_vec(o).try_into() };
-        let json5 = |o: &T| -> Result<Encoded> { json5::to_string(o).try_into() };
-        let lexpr = |o: &T| -> Result<Encoded> { serde_lexpr::to_vec(o).try_into() };
-        let message_pack = |o: &T| -> Result<Encoded> { rmp_serde::to_vec(o).try_into() };
-        let pickle =
-            |o: &T| -> Result<Encoded> { serde_pickle::to_vec(o, Default::default()).try_into() };
-        let postcard = |o: &T| -> Result<Encoded> { postcard::to_allocvec(o).try_into() };
-        let ron = |o: &T| -> Result<Encoded> { ron::to_string(o).try_into() };
-        let toml = |o: &T| -> Result<Encoded> { toml::to_vec(o).try_into() };
-        let url = |o: &T| -> Result<Encoded> { serde_qs::to_string(o).try_into() };
-        let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_vec(o).try_into() };
-        let xml = |o: &T| -> Result<Encoded> { serde_xml_rs::to_string(o).try_into() };
-        match content_type.try_into().map_err(|e| e.into())? {
-            ContentType::Bson => bson(self),
-            ContentType::Cbor => cbor(self),
-            ContentType::FlexBuffers => flexbuffers(self),
-            ContentType::Json => json(self),
-            ContentType::Json5 => json5(self),
-            ContentType::Lexpr => lexpr(self),
-            ContentType::MessagePack => message_pack(self),
-            ContentType::Pickle => pickle(self),
-            ContentType::Postcard => postcard(self),
-            ContentType::Ron => ron(self),
-            ContentType::Toml => toml(self),
-            ContentType::Url => url(self),
-            ContentType::Yaml => yaml(self),
-            ContentType::Xml => xml(self),
-        }
-    }
-}
-
-pub trait SimpleDecoder<T> {
-    fn decode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
-        &self,
-        content_type: F,
-    ) -> Result<T>;
-}
-
-impl<T> SimpleDecoder<T> for &[u8]
+pub struct Decoded<T>
 where
     T: DeserializeOwned,
 {
-    fn decode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
-        &self,
-        content_type: F,
-    ) -> Result<T> {
-        let bson = |o: &[u8]| -> Result<T> { bson::from_slice(o).map_err(Error::from) };
-        let cbor = |o: &[u8]| -> Result<T> { serde_cbor::from_slice(o).map_err(Error::from) };
-        let flexbuffers =
-            |o: &[u8]| -> Result<T> { flexbuffers::from_slice(o).map_err(Error::from) };
-        let json = |o: &[u8]| -> Result<T> { serde_json::from_slice(o).map_err(Error::from) };
-        let json5 = |o: &[u8]| -> Result<T> {
-            std::str::from_utf8(o)
-                .map_err(Error::from)
-                .and_then(|str| json5::from_str(str).map_err(Error::from))
-        };
-        let lexpr = |o: &[u8]| -> Result<T> { serde_lexpr::from_slice(o).map_err(Error::from) };
-        let message_pack =
-            |o: &[u8]| -> Result<T> { rmp_serde::from_slice(o).map_err(Error::from) };
-        let pickle = |o: &[u8]| -> Result<T> {
-            serde_pickle::from_slice(o, Default::default()).map_err(Error::from)
-        };
-        let postcard = |o: &[u8]| -> Result<T> { postcard::from_bytes(o).map_err(Error::from) };
-        let ron = |o: &[u8]| -> Result<T> {
-            std::str::from_utf8(o)
-                .map_err(Error::from)
-                .and_then(|str| ron::from_str(str).map_err(Error::from))
-        };
-        let toml = |o: &[u8]| -> Result<T> { toml::from_slice(o).map_err(Error::from) };
-        let url = |o: &[u8]| -> Result<T> { serde_qs::from_bytes(o).map_err(Error::from) };
-        let yaml = |o: &[u8]| -> Result<T> { serde_yaml::from_slice(o).map_err(Error::from) };
-        let xml = |o: &[u8]| -> Result<T> {
-            std::str::from_utf8(o)
-                .map_err(Error::from)
-                .and_then(|str| serde_xml_rs::from_str(str).map_err(Error::from))
-        };
-        match content_type.try_into().map_err(|e| e.into())? {
-            ContentType::Bson => bson(self),
-            ContentType::Cbor => cbor(self),
-            ContentType::FlexBuffers => flexbuffers(self),
-            ContentType::Json => json(self),
-            ContentType::Json5 => json5(self),
-            ContentType::Lexpr => lexpr(self),
-            ContentType::MessagePack => message_pack(self),
-            ContentType::Pickle => pickle(self),
-            ContentType::Postcard => postcard(self),
-            ContentType::Ron => ron(self),
-            ContentType::Toml => toml(self),
-            ContentType::Url => url(self),
-            ContentType::Yaml => yaml(self),
-            ContentType::Xml => xml(self),
-        }
+    pub(crate) inner: T,
+}
+
+pub trait DecodedInto<T> {
+    fn into(self) -> T;
+}
+
+impl<T, E> TryFrom<std::result::Result<T, E>> for Decoded<T>
+where
+    T: DeserializeOwned,
+    E: Into<Error>,
+{
+    type Error = Error;
+
+    fn try_from(res: std::result::Result<T, E>) -> std::result::Result<Self, Self::Error> {
+        res.map_err(|e| e.into()).map(Decoded::from)
+    }
+}
+
+impl<T: DeserializeOwned> From<T> for Decoded<T> {
+    fn from(t: T) -> Self {
+        Decoded { inner: t }
+    }
+}
+
+impl<T: DeserializeOwned> DecodedInto<T> for Decoded<T> {
+    fn into(self) -> T {
+        self.inner
+    }
+}
+
+impl<T: DeserializeOwned> Deref for Decoded<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T: DeserializeOwned> DerefMut for Decoded<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
