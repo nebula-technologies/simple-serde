@@ -1399,7 +1399,7 @@ dependencies = [
 
 [[package]]
 name = "simple_serde"
-version = "0.3.8"
+version = "1.0.0"
 dependencies = [
  "actix-http",
  "avro-rs",

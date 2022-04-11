@@ -12,10 +12,12 @@ extern crate serde_cbor;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_lexpr;
-extern crate serde_pickle;
+extern crate serde_pickle as pickle;
 extern crate serde_qs;
 extern crate serde_xml_rs;
 extern crate serde_yaml;
+
+use core::str::from_utf8;
 
 pub mod prelude {
     pub extern crate bson;
@@ -43,7 +45,9 @@ use derive_more::Display;
 use http::{header::ToStrError, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_xml_rs::Error::FromUtf8Error;
 use std::convert::{Infallible, TryFrom, TryInto};
+use std::ops::{Deref, DerefMut};
 use std::str::Utf8Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -380,6 +384,116 @@ impl From<serde_xml_rs::Error> for Error {
     }
 }
 
+pub struct Encoded {
+    inner: Vec<u8>,
+}
+
+impl PartialEq<Self> for Encoded {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl PartialEq<String> for Encoded {
+    fn eq(&self, other: &String) -> bool {
+        if let Ok(self_string) = self.try_to_string() {
+            self_string == *other
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<&str> for Encoded {
+    fn eq(&self, other: &&str) -> bool {
+        if let Ok(self_string) = self.try_to_string() {
+            self_string == *other
+        } else {
+            false
+        }
+    }
+}
+
+impl Eq for Encoded {}
+
+impl From<Vec<u8>> for Encoded {
+    fn from(v: Vec<u8>) -> Self {
+        Encoded { inner: v }
+    }
+}
+
+impl From<String> for Encoded {
+    fn from(s: String) -> Self {
+        Encoded {
+            inner: s.as_bytes().to_vec(),
+        }
+    }
+}
+
+impl From<&str> for Encoded {
+    fn from(s: &str) -> Self {
+        Encoded {
+            inner: s.as_bytes().to_vec(),
+        }
+    }
+}
+
+impl Deref for Encoded {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for Encoded {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<E> TryFrom<std::result::Result<Vec<u8>, E>> for Encoded
+where
+    E: Into<Error>,
+{
+    type Error = Error;
+    fn try_from(value: std::result::Result<Vec<u8>, E>) -> std::result::Result<Self, Self::Error> {
+        value.map(Encoded::from).map_err(|e| e.into())
+    }
+}
+
+impl<E> TryFrom<std::result::Result<String, E>> for Encoded
+where
+    E: Into<Error>,
+{
+    type Error = Error;
+    fn try_from(value: std::result::Result<String, E>) -> std::result::Result<Self, Self::Error> {
+        value.map(Encoded::from).map_err(|e| e.into())
+    }
+}
+
+impl<E> TryFrom<std::result::Result<&str, E>> for Encoded
+where
+    E: Into<Error>,
+{
+    type Error = Error;
+    fn try_from(value: std::result::Result<&str, E>) -> std::result::Result<Self, Self::Error> {
+        value.map(Encoded::from).map_err(|e| e.into())
+    }
+}
+
+impl TryToString for Encoded {
+    type Error = Error;
+    fn try_to_string(&self) -> std::result::Result<String, Self::Error> {
+        from_utf8(self).map_err(Error::from).map(|s| s.to_string())
+    }
+}
+
+pub trait TryToString {
+    type Error;
+    fn try_to_string(&self) -> std::result::Result<String, Self::Error>;
+}
+
 pub trait SimpleEncoder
 where
     Self: serde::Serialize,
@@ -387,7 +501,7 @@ where
     fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
         &self,
         content_type: F,
-    ) -> Result<Vec<u8>>;
+    ) -> Result<Encoded>;
 }
 
 impl<T> SimpleEncoder for T
@@ -397,41 +511,23 @@ where
     fn encode<F: TryInto<ContentType, Error = impl Into<crate::Error>>>(
         &self,
         content_type: F,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<Encoded> {
         use std::str::from_utf8;
-        let bson = |o: &T| -> Result<Vec<u8>> { bson::to_vec(o).map_err(Error::from) };
-        let cbor = |o: &T| -> Result<Vec<u8>> { serde_cbor::to_vec(o).map_err(Error::from) };
-        let flexbuffers =
-            |o: &T| -> Result<Vec<u8>> { flexbuffers::to_vec(o).map_err(Error::from) };
-        let json = |o: &T| -> Result<Vec<u8>> { serde_json::to_vec(o).map_err(Error::from) };
-        let json5 = |o: &T| -> Result<Vec<u8>> {
-            json5::to_string(o)
-                .map(|s| s.as_bytes().to_vec())
-                .map_err(Error::from)
-        };
-        let lexpr = |o: &T| -> Result<Vec<u8>> { serde_lexpr::to_vec(o).map_err(Error::from) };
-        let message_pack = |o: &T| -> Result<Vec<u8>> { rmp_serde::to_vec(o).map_err(Error::from) };
-        let pickle = |o: &T| -> Result<Vec<u8>> {
-            serde_pickle::to_vec(o, Default::default()).map_err(Error::from)
-        };
-        let postcard = |o: &T| -> Result<Vec<u8>> { postcard::to_allocvec(o).map_err(Error::from) };
-        let ron = |o: &T| -> Result<Vec<u8>> {
-            ron::to_string(o)
-                .map(|s| s.as_bytes().to_vec())
-                .map_err(Error::from)
-        };
-        let toml = |o: &T| -> Result<Vec<u8>> { toml::to_vec(o).map_err(Error::from) };
-        let url = |o: &T| -> Result<Vec<u8>> {
-            serde_qs::to_string(o)
-                .map(|s| s.as_bytes().to_vec())
-                .map_err(Error::from)
-        };
-        let yaml = |o: &T| -> Result<Vec<u8>> { serde_yaml::to_vec(o).map_err(Error::from) };
-        let xml = |o: &T| -> Result<Vec<u8>> {
-            serde_xml_rs::to_string(o)
-                .map(|s| s.as_bytes().to_vec())
-                .map_err(Error::from)
-        };
+        let bson = |o: &T| -> Result<Encoded> { bson::to_vec(o).try_into() };
+        let cbor = |o: &T| -> Result<Encoded> { serde_cbor::to_vec(o).try_into() };
+        let flexbuffers = |o: &T| -> Result<Encoded> { flexbuffers::to_vec(o).try_into() };
+        let json = |o: &T| -> Result<Encoded> { serde_json::to_vec(o).try_into() };
+        let json5 = |o: &T| -> Result<Encoded> { json5::to_string(o).try_into() };
+        let lexpr = |o: &T| -> Result<Encoded> { serde_lexpr::to_vec(o).try_into() };
+        let message_pack = |o: &T| -> Result<Encoded> { rmp_serde::to_vec(o).try_into() };
+        let pickle =
+            |o: &T| -> Result<Encoded> { serde_pickle::to_vec(o, Default::default()).try_into() };
+        let postcard = |o: &T| -> Result<Encoded> { postcard::to_allocvec(o).try_into() };
+        let ron = |o: &T| -> Result<Encoded> { ron::to_string(o).try_into() };
+        let toml = |o: &T| -> Result<Encoded> { toml::to_vec(o).try_into() };
+        let url = |o: &T| -> Result<Encoded> { serde_qs::to_string(o).try_into() };
+        let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_vec(o).try_into() };
+        let xml = |o: &T| -> Result<Encoded> { serde_xml_rs::to_string(o).try_into() };
         match content_type.try_into().map_err(|e| e.into())? {
             ContentType::Bson => bson(self),
             ContentType::Cbor => cbor(self),
@@ -538,11 +634,11 @@ mod test {
         };
         assert_eq!(
             "{\"foo\":\"bar\"}".as_bytes(),
-            my_struct.encode("json").unwrap()
+            my_struct.encode("json").unwrap().deref()
         );
         assert_eq!(
             "{\"foo\":\"bar\"}".as_bytes(),
-            my_struct.encode("application/json").unwrap()
+            my_struct.encode("application/json").unwrap().deref()
         );
     }
 }
