@@ -45,11 +45,9 @@ use derive_more::Display;
 use http::{header::ToStrError, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_xml_rs::Error::FromUtf8Error;
-use std::convert::{Infallible, TryFrom, TryInto};
+use std::convert::{Infallible, Into, TryFrom, TryInto};
 use std::ops::{Deref, DerefMut};
 use std::str::Utf8Error;
-use std::sync::Arc;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -120,6 +118,22 @@ impl TryFrom<&str> for ContentType {
             "application/x-xml" => Ok(ContentType::Xml),
             _ => Err(Error::UnknownContentTypeMatchFromStr(s.to_string())),
         }
+    }
+}
+
+impl TryFrom<String> for ContentType {
+    type Error = crate::Error;
+
+    fn try_from(s: String) -> std::result::Result<ContentType, Self::Error> {
+        Self::try_from(s.as_str())
+    }
+}
+
+impl TryFrom<&String> for ContentType {
+    type Error = crate::Error;
+
+    fn try_from(s: &String) -> std::result::Result<ContentType, Self::Error> {
+        Self::try_from(s.as_str())
     }
 }
 
@@ -506,6 +520,18 @@ where
     }
 }
 
+impl<T> SimpleDecoder<Decoded<T>> for Vec<u8>
+where
+    T: DeserializeOwned,
+{
+    fn decode<F: TryInto<ContentType, Error = impl Into<Error>>>(
+        &self,
+        content_type: F,
+    ) -> Result<Decoded<T>> {
+        self.as_slice().decode(content_type)
+    }
+}
+
 pub struct Encoded {
     inner: Vec<u8>,
 }
@@ -618,10 +644,6 @@ where
     pub(crate) inner: T,
 }
 
-pub trait DecodedInto<T> {
-    fn into(self) -> T;
-}
-
 impl<T, E> TryFrom<std::result::Result<T, E>> for Decoded<T>
 where
     T: DeserializeOwned,
@@ -640,12 +662,6 @@ impl<T: DeserializeOwned> From<T> for Decoded<T> {
     }
 }
 
-impl<T: DeserializeOwned> DecodedInto<T> for Decoded<T> {
-    fn into(self) -> T {
-        self.inner
-    }
-}
-
 impl<T: DeserializeOwned> Deref for Decoded<T> {
     type Target = T;
 
@@ -660,15 +676,120 @@ impl<T: DeserializeOwned> DerefMut for Decoded<T> {
     }
 }
 
+impl<T: DeserializeOwned> Decoded<T> {
+    pub fn into(self) -> T {
+        self.inner
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::serde::{Deserialize, Serialize};
-    use super::*;
-    use crate::SimpleEncoder;
+    use crate::{ContentType, Decoded, Encoded, SimpleDecoder, SimpleEncoder, TryToString};
+    use std::ops::Deref;
 
-    #[derive(Serialize, Deserialize, Debug)]
+    const EXAMPLE_JSON5_SERIALIZE: &str = r#"{"unquoted":"and you can quote me on that","singleQuotes":"I can use \"double quotes\" here","lineBreaks":"Look, Mom! No \\n's!","hexadecimal":912559,"leadingDecimalPoint":0.8675309,"andTrailing":8675309,"positiveSign":1,"trailingComma":"in objects","andIn":["arrays"],"backwardsCompatible":"with JSON"}"#;
+    const EXAMPLE_JSON5_DESERIALIZE: &str = r#"
+{
+  // comments
+  unquoted: 'and you can quote me on that',
+  singleQuotes: 'I can use "double quotes" here',
+  lineBreaks: "Look, Mom! \
+No \\n's!",
+  hexadecimal: 0xdecaf,
+  leadingDecimalPoint: .8675309, andTrailing: 8675309.,
+  positiveSign: +1,
+  trailingComma: 'in objects', andIn: ['arrays',],
+  "backwardsCompatible": "with JSON",
+}"#;
+
+    const EXAMPLE_JSON_SERIALIZE: &str = r#"{"unquoted":"and you can quote me on that","singleQuotes":"I can use \"double quotes\" here","lineBreaks":"Look, Mom! No \\n's!","hexadecimal":912559,"leadingDecimalPoint":0.8675309,"andTrailing":8675309.0,"positiveSign":1,"trailingComma":"in objects","andIn":["arrays"],"backwardsCompatible":"with JSON"}"#;
+    const EXAMPLE_JSON_DESERIALIZE: &str = r#"{
+"unquoted": "and you can quote me on that",
+"singleQuotes": "I can use \"double quotes\" here",
+"lineBreaks": "Look, Mom! No \\n's!",
+"hexadecimal": 912559,
+"leadingDecimalPoint": 0.8675309,
+"andTrailing": 8675309.0,
+"positiveSign": 1,
+"trailingComma": "in objects",
+"andIn": ["arrays"],
+"backwardsCompatible": "with JSON" }
+"#;
+
+    const EXAMPLE_YAML_SERIALIZE: &str = r#"---
+unquoted: and you can quote me on that
+singleQuotes: "I can use \"double quotes\" here"
+lineBreaks: "Look, Mom! No \\n's!"
+hexadecimal: 912559
+leadingDecimalPoint: 0.8675309
+andTrailing: 8675309.0
+positiveSign: 1
+trailingComma: in objects
+andIn:
+  - arrays
+backwardsCompatible: with JSON
+"#;
+    const EXAMPLE_YAML_DESERIALIZE: &str = r#"---
+unquoted: and you can quote me on that
+singleQuotes: I can use "double quotes" here
+lineBreaks: Look, Mom! No \n's!
+hexadecimal: 912559
+leadingDecimalPoint: 0.8675309
+andTrailing: 8675309
+positiveSign: 1
+trailingComma: in objects
+andIn:
+- arrays
+backwardsCompatible: with JSON"#;
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct MyStruct {
-        foo: String,
+        unquoted: String,
+        singleQuotes: String,
+        lineBreaks: String,
+        hexadecimal: i32,
+        leadingDecimalPoint: f64,
+        andTrailing: f64,
+        positiveSign: i32,
+        trailingComma: String,
+        andIn: Vec<String>,
+        backwardsCompatible: String,
+    }
+
+    impl Default for MyStruct {
+        fn default() -> Self {
+            MyStruct {
+                unquoted: "and you can quote me on that".to_string(),
+                singleQuotes: "I can use \"double quotes\" here".to_string(),
+                lineBreaks: "Look, Mom! No \\n's!".to_string(),
+                hexadecimal: 0xdecaf,
+                leadingDecimalPoint: 0.8675309,
+                andTrailing: 8675309.0,
+                positiveSign: 1,
+                trailingComma: "in objects".to_string(),
+                andIn: vec!["arrays".to_string()],
+                backwardsCompatible: "with JSON".to_string(),
+            }
+        }
+    }
+
+    fn deserialize_test(ser_type: &str, compare_object: &[u8]) {
+        for i in ["", "application/", "application/x-"] {
+            let content_type = format!("{}{}", i, ser_type);
+            let my_struct: Decoded<MyStruct> = compare_object.decode(content_type).unwrap();
+            println!("{:?}", my_struct.deref());
+            assert_eq!(my_struct.into(), MyStruct::default());
+        }
+    }
+
+    fn serialize_test(ser_type: &str, compare_object: &[u8]) {
+        for i in ["", "application/", "application/x-"] {
+            let my_struct = MyStruct::default();
+            let serialized = my_struct.encode(format!("{}{}", i, ser_type)).unwrap();
+            // println!("\n\nJSON5:\n{}\n\n", serialized.try_to_string().unwrap());
+            assert_eq!(compare_object, serialized.deref());
+        }
     }
 
     #[test]
@@ -677,17 +798,60 @@ mod test {
     }
 
     #[test]
-    fn test_serialization() {
-        let my_struct = MyStruct {
-            foo: "bar".to_string(),
-        };
+    fn test_simple_serialization() {
+        let my_struct = MyStruct::default();
         assert_eq!(
-            "{\"foo\":\"bar\"}".as_bytes(),
+            EXAMPLE_JSON_SERIALIZE.as_bytes(),
             my_struct.encode("json").unwrap().deref()
         );
         assert_eq!(
-            "{\"foo\":\"bar\"}".as_bytes(),
+            EXAMPLE_JSON_SERIALIZE.as_bytes(),
             my_struct.encode("application/json").unwrap().deref()
         );
+    }
+
+    #[test]
+    fn test_simple_deserialization() {
+        let my_struct: Decoded<MyStruct> =
+            EXAMPLE_JSON_DESERIALIZE.as_bytes().decode("json").unwrap();
+        assert_eq!(my_struct.into(), MyStruct::default());
+    }
+
+    #[test]
+    fn test_json_serialization() {
+        let my_struct = MyStruct::default();
+        let serialized = my_struct.encode("json").unwrap();
+        println!("\n\n{}\n\n", serialized.try_to_string().unwrap());
+        assert_eq!(EXAMPLE_JSON_SERIALIZE.as_bytes(), serialized.deref());
+    }
+
+    #[test]
+    fn test_json_deserialization() {
+        let my_struct: Decoded<MyStruct> =
+            EXAMPLE_JSON_DESERIALIZE.as_bytes().decode("json").unwrap();
+        assert_eq!(my_struct.into(), MyStruct::default());
+    }
+
+    #[test]
+    fn test_yaml_serialization() {
+        let my_struct = MyStruct::default();
+        let serialized = my_struct.encode("yaml").unwrap();
+        println!("\n\nYaml:\n{}\n\n", serialized.try_to_string().unwrap());
+        assert_eq!(
+            EXAMPLE_YAML_SERIALIZE.as_bytes(),
+            my_struct.encode("yaml").unwrap().deref()
+        );
+    }
+
+    #[test]
+    fn test_yaml() {
+        deserialize_test("yaml", EXAMPLE_YAML_DESERIALIZE.as_bytes());
+        serialize_test("yaml", EXAMPLE_YAML_SERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_json5() {
+        deserialize_test("json5", EXAMPLE_JSON5_DESERIALIZE.as_bytes());
+        serialize_test("json5", EXAMPLE_JSON5_SERIALIZE.as_bytes());
     }
 }
