@@ -272,7 +272,7 @@ pub enum Error {
     #[display(fmt = "YAML encoder/decoder error: {}", _0)]
     YamlError(serde_yaml::Error),
     #[display(fmt = "XML encoder/decoder error: {}", _0)]
-    XmlError(serde_xml_rs::Error),
+    XmlError(prelude::xml::Error),
     #[display(fmt = "Type is not supported for encoding/decoding: {:?}", _0)]
     TypeDoesNotSupportSerialization(ContentType),
     #[cfg(feature = "http")]
@@ -297,12 +297,17 @@ impl From<http::header::ToStrError> for Error {
     }
 }
 
+// Test for this from is disabled as its not possible to create the external
+// `std::convert::Infallible` object
+#[cfg(not(tarpaulin_include))]
 impl From<std::convert::Infallible> for Error {
     fn from(_: Infallible) -> Self {
         Error::Infallible
     }
 }
 
+// Unable to test due to no access to object
+#[cfg(not(tarpaulin_include))]
 impl From<Utf8Error> for Error {
     fn from(e: Utf8Error) -> Self {
         Error::ByteToUTF8ConversionFailure(e)
@@ -393,8 +398,8 @@ impl From<serde_yaml::Error> for Error {
         Error::YamlError(e)
     }
 }
-impl From<serde_xml_rs::Error> for Error {
-    fn from(e: serde_xml_rs::Error) -> Self {
+impl From<prelude::xml::Error> for Error {
+    fn from(e: prelude::xml::Error) -> Self {
         Error::XmlError(e)
     }
 }
@@ -437,7 +442,7 @@ where
         let toml = |o: &T| -> Result<Encoded> { toml::to_vec(o).try_into() };
         let url = |o: &T| -> Result<Encoded> { serde_qs::to_string(o).try_into() };
         let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_vec(o).try_into() };
-        let xml = |o: &T| -> Result<Encoded> { serde_xml_rs::to_string(o).try_into() };
+        let xml = |o: &T| -> Result<Encoded> { prelude::xml::to_string(o).try_into() };
         match content_type.try_into().map_err(|e| e.into())? {
             ContentType::Bson => bson(self),
             ContentType::Cbor => cbor(self),
@@ -499,7 +504,7 @@ where
         let xml = |o: &[u8]| -> Result<Decoded<T>> {
             std::str::from_utf8(o)
                 .map_err(Error::from)
-                .and_then(|str| serde_xml_rs::from_str(str).try_into())
+                .and_then(|str| prelude::xml::de::from_str(str).try_into())
         };
         match content_type.try_into().map_err(|e| e.into())? {
             ContentType::Bson => bson(self),
@@ -684,64 +689,13 @@ impl<T: DeserializeOwned> Decoded<T> {
 
 #[cfg(test)]
 mod test {
+    mod test_constants;
+    mod test_trait_impl;
+
     use super::serde::{Deserialize, Serialize};
-    use crate::{ContentType, Decoded, Encoded, SimpleDecoder, SimpleEncoder, TryToString};
+    use crate::{ContentType, Decoded, Encoded, Error, SimpleDecoder, SimpleEncoder, TryToString};
     use std::ops::Deref;
-
-    const EXAMPLE_JSON5_SERIALIZE: &str = r#"{"unquoted":"and you can quote me on that","singleQuotes":"I can use \"double quotes\" here","lineBreaks":"Look, Mom! No \\n's!","hexadecimal":912559,"leadingDecimalPoint":0.8675309,"andTrailing":8675309,"positiveSign":1,"trailingComma":"in objects","andIn":["arrays"],"backwardsCompatible":"with JSON"}"#;
-    const EXAMPLE_JSON5_DESERIALIZE: &str = r#"
-{
-  // comments
-  unquoted: 'and you can quote me on that',
-  singleQuotes: 'I can use "double quotes" here',
-  lineBreaks: "Look, Mom! \
-No \\n's!",
-  hexadecimal: 0xdecaf,
-  leadingDecimalPoint: .8675309, andTrailing: 8675309.,
-  positiveSign: +1,
-  trailingComma: 'in objects', andIn: ['arrays',],
-  "backwardsCompatible": "with JSON",
-}"#;
-
-    const EXAMPLE_JSON_SERIALIZE: &str = r#"{"unquoted":"and you can quote me on that","singleQuotes":"I can use \"double quotes\" here","lineBreaks":"Look, Mom! No \\n's!","hexadecimal":912559,"leadingDecimalPoint":0.8675309,"andTrailing":8675309.0,"positiveSign":1,"trailingComma":"in objects","andIn":["arrays"],"backwardsCompatible":"with JSON"}"#;
-    const EXAMPLE_JSON_DESERIALIZE: &str = r#"{
-"unquoted": "and you can quote me on that",
-"singleQuotes": "I can use \"double quotes\" here",
-"lineBreaks": "Look, Mom! No \\n's!",
-"hexadecimal": 912559,
-"leadingDecimalPoint": 0.8675309,
-"andTrailing": 8675309.0,
-"positiveSign": 1,
-"trailingComma": "in objects",
-"andIn": ["arrays"],
-"backwardsCompatible": "with JSON" }
-"#;
-
-    const EXAMPLE_YAML_SERIALIZE: &str = r#"---
-unquoted: and you can quote me on that
-singleQuotes: "I can use \"double quotes\" here"
-lineBreaks: "Look, Mom! No \\n's!"
-hexadecimal: 912559
-leadingDecimalPoint: 0.8675309
-andTrailing: 8675309.0
-positiveSign: 1
-trailingComma: in objects
-andIn:
-  - arrays
-backwardsCompatible: with JSON
-"#;
-    const EXAMPLE_YAML_DESERIALIZE: &str = r#"---
-unquoted: and you can quote me on that
-singleQuotes: I can use "double quotes" here
-lineBreaks: Look, Mom! No \n's!
-hexadecimal: 912559
-leadingDecimalPoint: 0.8675309
-andTrailing: 8675309
-positiveSign: 1
-trailingComma: in objects
-andIn:
-- arrays
-backwardsCompatible: with JSON"#;
+    use test_constants::*;
 
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct MyStruct {
@@ -768,7 +722,7 @@ backwardsCompatible: with JSON"#;
                 andTrailing: 8675309.0,
                 positiveSign: 1,
                 trailingComma: "in objects".to_string(),
-                andIn: vec!["arrays".to_string()],
+                andIn: vec!["arrays".to_string(), "arrays-2".to_string()],
                 backwardsCompatible: "with JSON".to_string(),
             }
         }
@@ -778,7 +732,7 @@ backwardsCompatible: with JSON"#;
         for i in ["", "application/", "application/x-"] {
             let content_type = format!("{}{}", i, ser_type);
             let my_struct: Decoded<MyStruct> = compare_object.decode(content_type).unwrap();
-            println!("{:?}", my_struct.deref());
+            println!("Deserialize {} -> {:?}", ser_type, my_struct.deref());
             assert_eq!(my_struct.into(), MyStruct::default());
         }
     }
@@ -787,14 +741,91 @@ backwardsCompatible: with JSON"#;
         for i in ["", "application/", "application/x-"] {
             let my_struct = MyStruct::default();
             let serialized = my_struct.encode(format!("{}{}", i, ser_type)).unwrap();
-            // println!("\n\nJSON5:\n{}\n\n", serialized.try_to_string().unwrap());
+            if let Ok(s) = serialized.try_to_string() {
+                println!("Serialize {} -> {}", ser_type, s);
+            } else {
+                println!("Serialize {} -> {:?}", ser_type, serialized.deref());
+            }
             assert_eq!(compare_object, serialized.deref());
         }
     }
 
     #[test]
+    fn unknown_content() {
+        assert_eq!(
+            Error::UnknownContentTypeMatchFromStr("Foobar".into()),
+            ContentType::try_from("Foobar").unwrap_err()
+        );
+    }
+
+    #[test]
     fn test_from_str() {
         assert_eq!(ContentType::Bson, "Bson".try_into().unwrap());
+    }
+
+    #[test]
+    fn test_from_ref_string() {
+        assert_eq!(ContentType::Bson, (&"Bson".to_string()).try_into().unwrap());
+    }
+
+    #[test]
+    fn test_from_ref_self() {
+        assert_eq!(
+            ContentType::Bson,
+            ContentType::try_from(&ContentType::Bson).unwrap()
+        );
+        assert_eq!(
+            ContentType::Cbor,
+            ContentType::try_from(&ContentType::Cbor).unwrap()
+        );
+        assert_eq!(
+            ContentType::FlexBuffers,
+            ContentType::try_from(&ContentType::FlexBuffers).unwrap()
+        );
+        assert_eq!(
+            ContentType::Json,
+            ContentType::try_from(&ContentType::Json).unwrap()
+        );
+        assert_eq!(
+            ContentType::Json5,
+            ContentType::try_from(&ContentType::Json5).unwrap()
+        );
+        assert_eq!(
+            ContentType::Lexpr,
+            ContentType::try_from(&ContentType::Lexpr).unwrap()
+        );
+        assert_eq!(
+            ContentType::MessagePack,
+            ContentType::try_from(&ContentType::MessagePack).unwrap()
+        );
+        assert_eq!(
+            ContentType::Postcard,
+            ContentType::try_from(&ContentType::Postcard).unwrap()
+        );
+        assert_eq!(
+            ContentType::Ron,
+            ContentType::try_from(&ContentType::Ron).unwrap()
+        );
+        assert_eq!(
+            ContentType::Toml,
+            ContentType::try_from(&ContentType::Toml).unwrap()
+        );
+        assert_eq!(
+            ContentType::Url,
+            ContentType::try_from(&ContentType::Url).unwrap()
+        );
+        assert_eq!(
+            ContentType::Yaml,
+            ContentType::try_from(&ContentType::Yaml).unwrap()
+        );
+        assert_eq!(
+            ContentType::Pickle,
+            ContentType::try_from(&ContentType::Pickle).unwrap()
+        );
+        assert_eq!(
+            ContentType::Xml,
+            ContentType::try_from(&ContentType::Xml).unwrap()
+        );
     }
 
     #[test]
@@ -818,32 +849,6 @@ backwardsCompatible: with JSON"#;
     }
 
     #[test]
-    fn test_json_serialization() {
-        let my_struct = MyStruct::default();
-        let serialized = my_struct.encode("json").unwrap();
-        println!("\n\n{}\n\n", serialized.try_to_string().unwrap());
-        assert_eq!(EXAMPLE_JSON_SERIALIZE.as_bytes(), serialized.deref());
-    }
-
-    #[test]
-    fn test_json_deserialization() {
-        let my_struct: Decoded<MyStruct> =
-            EXAMPLE_JSON_DESERIALIZE.as_bytes().decode("json").unwrap();
-        assert_eq!(my_struct.into(), MyStruct::default());
-    }
-
-    #[test]
-    fn test_yaml_serialization() {
-        let my_struct = MyStruct::default();
-        let serialized = my_struct.encode("yaml").unwrap();
-        println!("\n\nYaml:\n{}\n\n", serialized.try_to_string().unwrap());
-        assert_eq!(
-            EXAMPLE_YAML_SERIALIZE.as_bytes(),
-            my_struct.encode("yaml").unwrap().deref()
-        );
-    }
-
-    #[test]
     fn test_yaml() {
         deserialize_test("yaml", EXAMPLE_YAML_DESERIALIZE.as_bytes());
         serialize_test("yaml", EXAMPLE_YAML_SERIALIZE.as_bytes());
@@ -853,5 +858,85 @@ backwardsCompatible: with JSON"#;
     fn test_json5() {
         deserialize_test("json5", EXAMPLE_JSON5_DESERIALIZE.as_bytes());
         serialize_test("json5", EXAMPLE_JSON5_SERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_json() {
+        deserialize_test("json", EXAMPLE_JSON_DESERIALIZE.as_bytes());
+        serialize_test("json", EXAMPLE_JSON_SERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_xml() {
+        serialize_test("xml", XML_SERIALIZE.as_bytes());
+        deserialize_test("xml", XML_DESERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_cbor() {
+        serialize_test("cbor", CBOR_SERIALIZE);
+        deserialize_test("cbor", CBOR_SERIALIZE);
+    }
+
+    #[test]
+    fn test_bson() {
+        serialize_test("bson", BSON_SERIALIZE);
+        deserialize_test("bson", BSON_SERIALIZE);
+    }
+
+    #[test]
+    fn test_ron() {
+        serialize_test("ron", RON_SERIALIZE.as_bytes());
+        deserialize_test("ron", RON_DESERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_toml() {
+        serialize_test("toml", TOML_SERIALIZE.as_bytes());
+        deserialize_test("toml", TOML_SERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_flex_buffers() {
+        serialize_test("flexbuffers", FLEXBUFFERS_SERIALIZE);
+        deserialize_test("flexbuffers", FLEXBUFFERS_SERIALIZE);
+    }
+
+    #[test]
+    fn test_lexpr() {
+        serialize_test("lexpr", LEXPR_SERIALIZE.as_bytes());
+        deserialize_test("lexpr", LEXPR_DESERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_messagepack() {
+        serialize_test("messagepack", MESSAGEPACK_SERIALIZE);
+        deserialize_test("messagepack", MESSAGEPACK_SERIALIZE);
+    }
+
+    #[test]
+    fn test_pickle() {
+        serialize_test("pickle", PICKLE_SERIALIZE);
+        deserialize_test("pickle", PICKLE_SERIALIZE);
+    }
+
+    #[test]
+    fn test_postcard() {
+        serialize_test("postcard", POSTCARD_SERIALIZE);
+        deserialize_test("postcard", POSTCARD_SERIALIZE);
+    }
+
+    #[test]
+    fn test_url() {
+        serialize_test("url", URL_SERIALIZE.as_bytes());
+        deserialize_test("url", URL_SERIALIZE.as_bytes());
+    }
+
+    #[test]
+    fn test_error_from_bson_error() {
+        let err = Error::from(bson::ser::Error::UnsignedIntegerExceededRange(0));
+        assert!(matches!(err, Error::BsonSerializationFailure(_)));
+        let err = Error::from(bson::de::Error::EndOfStream);
+        assert!(matches!(err, Error::BsonDeserializationFailure(_)));
     }
 }
