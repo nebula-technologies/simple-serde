@@ -1,6 +1,6 @@
 [package]
 name = "simple_serde"
-version = "1.0.0"
+version = "1.0.0-rc1"
 edition = "2021"
 authors = ["Anders Blenstrup-Pedersen <abp-git@ryuu.technology>"]
 description = "A wrapper around multiple serde libraries making it easy to encode and decode multiple types"
