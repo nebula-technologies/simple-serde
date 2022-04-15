@@ -120,7 +120,6 @@ extern crate rmp_serde;
 extern crate ron;
 extern crate serde;
 extern crate serde_cbor;
-#[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_lexpr;
@@ -550,7 +549,6 @@ where
         &self,
         content_type: F,
     ) -> Result<Encoded> {
-        use std::str::from_utf8;
         let bson = |o: &T| -> Result<Encoded> { bson::to_vec(o).try_into() };
         let cbor = |o: &T| -> Result<Encoded> { serde_cbor::to_vec(o).try_into() };
         let flexbuffers = |o: &T| -> Result<Encoded> { flexbuffers::to_vec(o).try_into() };
@@ -851,30 +849,38 @@ mod test {
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct MyStruct {
         unquoted: String,
-        singleQuotes: String,
-        lineBreaks: String,
+        #[serde(rename = "singleQuotes")]
+        single_quotes: String,
+        #[serde(rename = "lineBreaks")]
+        line_breaks: String,
         hexadecimal: i32,
-        leadingDecimalPoint: f64,
-        andTrailing: f64,
-        positiveSign: i32,
-        trailingComma: String,
-        andIn: Vec<String>,
-        backwardsCompatible: String,
+        #[serde(rename = "leadingDecimalPoint")]
+        leading_decimal_point: f64,
+        #[serde(rename = "andTrailing")]
+        and_trailing: f64,
+        #[serde(rename = "positiveSign")]
+        positive_sign: i32,
+        #[serde(rename = "trailingComma")]
+        trailing_comma: String,
+        #[serde(rename = "andIn")]
+        and_in: Vec<String>,
+        #[serde(rename = "backwardsCompatible")]
+        backwards_compatible: String,
     }
 
     impl Default for MyStruct {
         fn default() -> Self {
             MyStruct {
                 unquoted: "and you can quote me on that".to_string(),
-                singleQuotes: "I can use \"double quotes\" here".to_string(),
-                lineBreaks: "Look, Mom! No \\n's!".to_string(),
+                single_quotes: "I can use \"double quotes\" here".to_string(),
+                line_breaks: "Look, Mom! No \\n's!".to_string(),
                 hexadecimal: 0xdecaf,
-                leadingDecimalPoint: 0.8675309,
-                andTrailing: 8675309.0,
-                positiveSign: 1,
-                trailingComma: "in objects".to_string(),
-                andIn: vec!["arrays".to_string(), "arrays-2".to_string()],
-                backwardsCompatible: "with JSON".to_string(),
+                leading_decimal_point: 0.8675309,
+                and_trailing: 8675309.0,
+                positive_sign: 1,
+                trailing_comma: "in objects".to_string(),
+                and_in: vec!["arrays".to_string(), "arrays-2".to_string()],
+                backwards_compatible: "with JSON".to_string(),
             }
         }
     }
