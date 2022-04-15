@@ -87,6 +87,7 @@ impl PartialEq for Error {
                 Error::YamlError(ee) => format!("{}", e) == format!("{}", ee),
                 _ => false,
             },
+            #[cfg(feature = "accept-limited-xml-serialize")]
             Error::XmlError(e) => match other {
                 Error::XmlError(ee) => format!("{:?}", e) == format!("{:?}", ee),
                 _ => false,

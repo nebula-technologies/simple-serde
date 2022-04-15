@@ -40,7 +40,7 @@
 //! - Toml
 //! - Url
 //! - Yaml
-//! - Xml
+//! - Xml (Awaiting serde-xml-rs v. >0.51)
 //!
 //! further all string definitions of `ContentType` is case insensitive, and has an alternate
 //! - `application/[format]`
@@ -126,6 +126,7 @@ extern crate serde_json;
 extern crate serde_lexpr;
 extern crate serde_pickle as pickle;
 extern crate serde_qs;
+#[cfg(feature = "accept-limited-xml-serialize")]
 extern crate serde_xml_rs;
 extern crate serde_yaml;
 
@@ -144,6 +145,7 @@ pub mod prelude {
     pub extern crate serde_lexpr as lexpr;
     pub extern crate serde_pickle as pickle;
     pub extern crate serde_qs as url;
+    #[cfg(feature = "accept-limited-xml-serialize")]
     pub extern crate serde_xml_rs as xml;
     pub extern crate serde_yaml as yaml;
 }
@@ -178,6 +180,7 @@ pub enum ContentType {
     Toml,
     Url,
     Yaml,
+    #[cfg(feature = "accept-limited-xml-serialize")]
     Xml,
 }
 
@@ -225,8 +228,11 @@ impl TryFrom<&str> for ContentType {
             "yaml" => Ok(ContentType::Yaml),
             "application/yaml" => Ok(ContentType::Yaml),
             "application/x-yaml" => Ok(ContentType::Yaml),
+            #[cfg(feature = "accept-limited-xml-serialize")]
             "xml" => Ok(ContentType::Xml),
+            #[cfg(feature = "accept-limited-xml-serialize")]
             "application/xml" => Ok(ContentType::Xml),
+            #[cfg(feature = "accept-limited-xml-serialize")]
             "application/x-xml" => Ok(ContentType::Xml),
             _ => Err(Error::UnknownContentTypeMatchFromStr(s.to_string())),
         }
@@ -267,6 +273,7 @@ impl TryFrom<&ContentType> for ContentType {
             Self::Toml => Ok(Self::Toml),
             Self::Url => Ok(Self::Url),
             Self::Yaml => Ok(Self::Yaml),
+            #[cfg(feature = "accept-limited-xml-serialize")]
             Self::Xml => Ok(Self::Xml),
         }
     }
@@ -291,6 +298,7 @@ impl TryIntoHeaderValue for ContentType {
             ContentType::Toml => "application/toml",
             ContentType::Url => "application/x-url",
             ContentType::Yaml => "application/yaml",
+            #[cfg(feature = "accept-limited-xml-serialize")]
             ContentType::Xml => "application/xml",
         })
     }
@@ -314,6 +322,7 @@ impl TryIntoHeaderValue for &ContentType {
             ContentType::Toml => "application/toml",
             ContentType::Url => "application/x-url",
             ContentType::Yaml => "application/yaml",
+            #[cfg(feature = "accept-limited-xml-serialize")]
             ContentType::Xml => "application/xml",
         })
     }
@@ -384,6 +393,7 @@ pub enum Error {
     #[display(fmt = "YAML encoder/decoder error: {}", _0)]
     YamlError(serde_yaml::Error),
     #[display(fmt = "XML encoder/decoder error: {}", _0)]
+    #[cfg(feature = "accept-limited-xml-serialize")]
     XmlError(prelude::xml::Error),
     #[display(fmt = "Type is not supported for encoding/decoding: {:?}", _0)]
     TypeDoesNotSupportSerialization(ContentType),
@@ -510,6 +520,7 @@ impl From<serde_yaml::Error> for Error {
         Error::YamlError(e)
     }
 }
+#[cfg(feature = "accept-limited-xml-serialize")]
 impl From<prelude::xml::Error> for Error {
     fn from(e: prelude::xml::Error) -> Self {
         Error::XmlError(e)
@@ -554,6 +565,7 @@ where
         let toml = |o: &T| -> Result<Encoded> { toml::to_vec(o).try_into() };
         let url = |o: &T| -> Result<Encoded> { serde_qs::to_string(o).try_into() };
         let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_vec(o).try_into() };
+        #[cfg(feature = "accept-limited-xml-serialize")]
         let xml = |o: &T| -> Result<Encoded> { prelude::xml::to_string(o).try_into() };
         match content_type.try_into().map_err(|e| e.into())? {
             ContentType::Bson => bson(self),
@@ -569,6 +581,7 @@ where
             ContentType::Toml => toml(self),
             ContentType::Url => url(self),
             ContentType::Yaml => yaml(self),
+            #[cfg(feature = "accept-limited-xml-serialize")]
             ContentType::Xml => xml(self),
         }
     }
@@ -613,6 +626,7 @@ where
         let toml = |o: &[u8]| -> Result<Decoded<T>> { toml::from_slice(o).try_into() };
         let url = |o: &[u8]| -> Result<Decoded<T>> { serde_qs::from_bytes(o).try_into() };
         let yaml = |o: &[u8]| -> Result<Decoded<T>> { serde_yaml::from_slice(o).try_into() };
+        #[cfg(feature = "accept-limited-xml-serialize")]
         let xml = |o: &[u8]| -> Result<Decoded<T>> {
             std::str::from_utf8(o)
                 .map_err(Error::from)
@@ -632,6 +646,7 @@ where
             ContentType::Toml => toml(self),
             ContentType::Url => url(self),
             ContentType::Yaml => yaml(self),
+            #[cfg(feature = "accept-limited-xml-serialize")]
             ContentType::Xml => xml(self),
         }
     }
@@ -958,6 +973,7 @@ mod test {
             ContentType::Pickle,
             ContentType::try_from(&ContentType::Pickle).unwrap()
         );
+        #[cfg(feature = "accept-limited-xml-serialize")]
         assert_eq!(
             ContentType::Xml,
             ContentType::try_from(&ContentType::Xml).unwrap()
@@ -1003,6 +1019,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "accept-limited-xml-serialize")]
     fn test_xml() {
         serialize_test("xml", XML_SERIALIZE.as_bytes());
         deserialize_test("xml", XML_DESERIALIZE.as_bytes());

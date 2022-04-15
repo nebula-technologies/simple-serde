@@ -40,7 +40,7 @@ encapsulated data.
 - Toml
 - Url
 - Yaml
-- Xml
+- Xml (Awaiting serde-xml-rs v. >0.51)
 
 further all string definitions of `ContentType` is case insensitive, and has an alternate
 - `application/[format]`

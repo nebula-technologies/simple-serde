@@ -14,6 +14,7 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
+accept-limited-xml-serialize = ["serde-xml-rs"]
 
 [dependencies]
 avro-rs = { version = "0.13.0", features = ["snappy"] }
@@ -26,7 +27,7 @@ ron = "0.7.0"
 serde = "1.0.133"
 serde-lexpr = "0.1.2"
 serde-pickle = "1.1.0"
-serde-xml-rs = {git = "https://github.com/RReverser/serde-xml-rs.git"}
+serde-xml-rs = {version="0.5.1", optional=true}
 serde_cbor = "0.11.2"
 serde_derive = "1.0.133"
 serde_json = "1.0.75"
