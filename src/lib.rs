@@ -15,7 +15,7 @@
 //! `.encode` and `.decode` both takes a `ContentType` which defines what you are encoding/decoding
 //! from/to.
 //! an example would be `[some Vec<u8>].decode("bson")` or `my_struct.encode("bson")`.
-//! This is possible as `ContentType` implements the `TryFrom` trait for `&str`, `String`.  
+//! This is possible as `ContentType` implements the `TryFrom` trait for `&str`, `String`.
 //! In case the implementation is unable to decode what type you are trying to encode/decode from/to
 //! an `Err` result with `Error::UnknownContentTypeMatchFromStr` will be returned from the
 //! encoder/decoder
@@ -68,11 +68,10 @@
 //!   .expect("Should have been encoded in yaml");
 //!
 //! assert_eq!(
-//!     &vec![45, 45, 45, 10, 98, 97, 114, 58, 32, 102, 111, 111, 98, 97, 114, 10],
+//!     &vec![98, 97, 114, 58, 32, 102, 111, 111, 98, 97, 114, 10],
 //!     encoded.deref()
 //! );
-//! assert_eq!(r#"---
-//! bar: foobar
+//! assert_eq!(r#"bar: foobar
 //! "#, encoded.try_to_string().unwrap())
 //! ```
 //! ## Deserialization/Decode example
@@ -156,6 +155,7 @@ use actix_http::header::TryIntoHeaderValue;
 use derive_more::Display;
 #[cfg(feature = "http")]
 use http::{header::ToStrError, HeaderValue};
+use ron::de::SpannedError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::{Infallible, Into, TryFrom, TryInto};
@@ -383,6 +383,8 @@ pub enum Error {
     PostcardError(postcard::Error),
     #[display(fmt = "RON encoder/decoder error: {}", _0)]
     RonError(ron::Error),
+    #[display(fmt = "RON decoder error: {}", _0)]
+    RonDecodeError(ron::de::SpannedError),
     #[display(fmt = "TOML encoder/decoder error: {}", _0)]
     TomlSerializationFailure(toml::ser::Error),
     #[display(fmt = "TOML encoder/decoder error: {}", _0)]
@@ -525,6 +527,11 @@ impl From<prelude::xml::Error> for Error {
         Error::XmlError(e)
     }
 }
+impl From<ron::de::SpannedError> for Error {
+    fn from(e: ron::de::SpannedError) -> Self {
+        Self::RonDecodeError(e)
+    }
+}
 
 pub trait TryToString {
     type Error;
@@ -562,7 +569,7 @@ where
         let ron = |o: &T| -> Result<Encoded> { ron::to_string(o).try_into() };
         let toml = |o: &T| -> Result<Encoded> { toml::to_vec(o).try_into() };
         let url = |o: &T| -> Result<Encoded> { serde_qs::to_string(o).try_into() };
-        let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_vec(o).try_into() };
+        let yaml = |o: &T| -> Result<Encoded> { serde_yaml::to_string(o).try_into() };
         #[cfg(feature = "accept-limited-xml-serialize")]
         let xml = |o: &T| -> Result<Encoded> { prelude::xml::to_string(o).try_into() };
         match content_type.try_into().map_err(|e| e.into())? {
@@ -1115,12 +1122,11 @@ mod test {
             .expect("Should have been encoded in yaml");
 
         assert_eq!(
-            &vec![45, 45, 45, 10, 98, 97, 114, 58, 32, 102, 111, 111, 98, 97, 114, 10],
+            &vec![98, 97, 114, 58, 32, 102, 111, 111, 98, 97, 114, 10],
             encoded.deref()
         );
         assert_eq!(
-            r#"---
-bar: foobar
+            r#"bar: foobar
 "#,
             encoded.try_to_string().unwrap()
         )

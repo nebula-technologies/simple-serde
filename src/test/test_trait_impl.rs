@@ -110,6 +110,10 @@ impl PartialEq for Error {
                 Error::InvalidHeaderValue(ee) => format!("{}", e) == format!("{}", ee),
                 _ => false,
             },
+            Error::RonDecodeError(e) => match other {
+                Error::RonDecodeError(ee) => format!("{}", e) == format!("{}", ee),
+                _ => false,
+            },
         }
     }
 }

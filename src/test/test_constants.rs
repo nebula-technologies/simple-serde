@@ -30,28 +30,26 @@ pub(crate) const EXAMPLE_JSON_DESERIALIZE: &str = r#"{
 "#;
 
 // ContentType::Yaml
-pub(crate) const EXAMPLE_YAML_SERIALIZE: &str = r#"---
-unquoted: and you can quote me on that
-singleQuotes: "I can use \"double quotes\" here"
-lineBreaks: "Look, Mom! No \\n's!"
+pub(crate) const EXAMPLE_YAML_SERIALIZE: &str = r#"unquoted: and you can quote me on that
+singleQuotes: I can use "double quotes" here
+lineBreaks: Look, Mom! No \n's!
 hexadecimal: 912559
 leadingDecimalPoint: 0.8675309
 andTrailing: 8675309.0
 positiveSign: 1
 trailingComma: in objects
 andIn:
-  - arrays
-  - arrays-2
+- arrays
+- arrays-2
 backwardsCompatible: with JSON
 "#;
 
-pub(crate) const EXAMPLE_YAML_DESERIALIZE: &str = r#"---
-unquoted: and you can quote me on that
+pub(crate) const EXAMPLE_YAML_DESERIALIZE: &str = r#"unquoted: and you can quote me on that
 singleQuotes: I can use "double quotes" here
 lineBreaks: Look, Mom! No \n's!
 hexadecimal: 912559
 leadingDecimalPoint: 0.8675309
-andTrailing: 8675309
+andTrailing: 8675309.0
 positiveSign: 1
 trailingComma: in objects
 andIn:
@@ -114,7 +112,7 @@ pub(crate) const CBOR_SERIALIZE: &[u8] = &[
 ];
 
 // ContentType::Ron
-pub(crate) const RON_SERIALIZE: &str = r#"(unquoted:"and you can quote me on that",singleQuotes:"I can use \"double quotes\" here",lineBreaks:"Look, Mom! No \\n\'s!",hexadecimal:912559,leadingDecimalPoint:0.8675309,andTrailing:8675309,positiveSign:1,trailingComma:"in objects",andIn:["arrays","arrays-2"],backwardsCompatible:"with JSON")"#;
+pub(crate) const RON_SERIALIZE: &str = r#"(unquoted:"and you can quote me on that",singleQuotes:"I can use \"double quotes\" here",lineBreaks:"Look, Mom! No \\n\'s!",hexadecimal:912559,leadingDecimalPoint:0.8675309,andTrailing:8675309.0,positiveSign:1,trailingComma:"in objects",andIn:["arrays","arrays-2"],backwardsCompatible:"with JSON")"#;
 pub(crate) const RON_DESERIALIZE: &str = r#"(
     unquoted: "and you can quote me on that",
     singleQuotes: "I can use \"double quotes\" here",
@@ -212,10 +210,10 @@ pub(crate) const POSTCARD_SERIALIZE: &[u8] = &[
     28, 97, 110, 100, 32, 121, 111, 117, 32, 99, 97, 110, 32, 113, 117, 111, 116, 101, 32, 109,
     101, 32, 111, 110, 32, 116, 104, 97, 116, 30, 73, 32, 99, 97, 110, 32, 117, 115, 101, 32, 34,
     100, 111, 117, 98, 108, 101, 32, 113, 117, 111, 116, 101, 115, 34, 32, 104, 101, 114, 101, 19,
-    76, 111, 111, 107, 44, 32, 77, 111, 109, 33, 32, 78, 111, 32, 92, 110, 39, 115, 33, 175, 236,
-    13, 0, 78, 159, 120, 41, 208, 194, 235, 63, 0, 0, 0, 160, 253, 139, 96, 65, 1, 0, 0, 0, 10,
-    105, 110, 32, 111, 98, 106, 101, 99, 116, 115, 2, 6, 97, 114, 114, 97, 121, 115, 8, 97, 114,
-    114, 97, 121, 115, 45, 50, 9, 119, 105, 116, 104, 32, 74, 83, 79, 78,
+    76, 111, 111, 107, 44, 32, 77, 111, 109, 33, 32, 78, 111, 32, 92, 110, 39, 115, 33, 222, 178,
+    111, 78, 159, 120, 41, 208, 194, 235, 63, 0, 0, 0, 160, 253, 139, 96, 65, 2, 10, 105, 110, 32,
+    111, 98, 106, 101, 99, 116, 115, 2, 6, 97, 114, 114, 97, 121, 115, 8, 97, 114, 114, 97, 121,
+    115, 45, 50, 9, 119, 105, 116, 104, 32, 74, 83, 79, 78,
 ];
 // ContentType::Url
 pub(crate) const URL_SERIALIZE: &str = r#"unquoted=and+you+can+quote+me+on+that&singleQuotes=I+can+use+%22double+quotes%22+here&lineBreaks=Look%2C+Mom%21+No+%5Cn%27s%21&hexadecimal=912559&leadingDecimalPoint=0.8675309&andTrailing=8675309&positiveSign=1&trailingComma=in+objects&andIn[0]=arrays&andIn[1]=arrays-2&backwardsCompatible=with+JSON"#;

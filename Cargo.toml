@@ -1,6 +1,6 @@
 [package]
 name = "simple_serde"
-version = "1.0.0-rc1"
+version = "1.1.0"
 edition = "2021"
 authors = ["Anders Blenstrup-Pedersen <abp-git@ryuu.technology>"]
 description = "A wrapper around multiple serde libraries making it easy to encode and decode multiple types"
@@ -18,26 +18,25 @@ accept-limited-xml-serialize = ["serde-xml-rs"]
 
 [dependencies]
 avro-rs = { version = "0.13.0", features = ["snappy"] }
-bson = "2.1.0"
+bson = "2.4.0"
 flexbuffers = "2.0.0"
 json5 = "0.4.1"
-postcard = {version = "0.7.3", features = ["alloc"]}
-rmp-serde = "1.0.0"
-ron = "0.7.0"
-serde = "1.0.133"
+postcard = { version = "1.0.2", features = ["alloc"] }
+rmp-serde = "1.1.1"
+ron = "0.8.0"
+serde = "1.0.148"
 serde-lexpr = "0.1.2"
-serde-pickle = "1.1.0"
-serde-xml-rs = {version="0.5.1", optional=true}
+serde-pickle = "1.1.1"
+serde-xml-rs = { version = "0.6.0", optional = true }
 serde_cbor = "0.11.2"
-serde_derive = "1.0.133"
-serde_json = "1.0.75"
-serde_qs = "0.8.5"
-serde_yaml = "0.8.23"
-toml = "0.5.8"
+serde_derive = "1.0.148"
+serde_json = "1.0.89"
+serde_qs = "0.10.1"
+serde_yaml = "0.9.14"
+toml = "0.5.9"
 derive_more = "0.99.17"
-[dependencies.actix-http]
-version = "3.0.0-beta.19"
+actix-http= "3.2.2"
 
 [dependencies.http]
-version = "0.2.6"
+version = "0.2.8"
 optional = true

@@ -1,4 +1,5 @@
 # Simple Serde
+
 Simple serde is as its said, a simplified implementation of multiple repositories for
 serialization and deserialization.
 
@@ -6,16 +7,18 @@ In Short the goal is to have a single tool for serialization and deserialization
 interface.
 
 # Usage
+
 Simple Serde uses `.encode` and `.decode` for encoding and decoding. Decode can be done on any
 `Vec<u8>` or `&[u8]` this allows for the cleanest implementation.
 The same goes for anything that needs to be serialized/encoded. Any type that implements the
 `#[derive(Serialize)]` can easily be encoded using `.encode`
 
 ## Encode/Decode
+
 `.encode` and `.decode` both takes a `ContentType` which defines what you are encoding/decoding
 from/to.
 an example would be `[some Vec<u8>].decode("bson")` or `my_struct.encode("bson")`.
-This is possible as `ContentType` implements the `TryFrom` trait for `&str`, `String`.  
+This is possible as `ContentType` implements the `TryFrom` trait for `&str`, `String`.
 In case the implementation is unable to decode what type you are trying to encode/decode from/to
 an `Err` result with `Error::UnknownContentTypeMatchFromStr` will be returned from the
 encoder/decoder
@@ -27,6 +30,7 @@ a struct called `Encoded` this allow for further simplifications on implementati
 encapsulated data.
 
 ## Supported formats
+
 - Bson
 - Cbor
 - FlexBuffers
@@ -43,10 +47,12 @@ encapsulated data.
 - Xml (Awaiting serde-xml-rs v. >0.51)
 
 further all string definitions of `ContentType` is case insensitive, and has an alternate
+
 - `application/[format]`
 - `application/x-[format]`
 
 ## Serialization/Encode example
+
 ```rust
 use std::ops::Deref;
 use serde::Serialize;
@@ -75,7 +81,9 @@ assert_eq!(r#"---
 bar: foobar
 "#, encoded.try_to_string().unwrap())
 ```
+
 ## Deserialization/Decode example
+
 ```rust
 use std::ops::Deref;
 use serde::Deserialize;
@@ -109,8 +117,11 @@ assert_eq!(
     decoded_from_string.into()
 );
 ```
+
 # Contribute
+
 Any merge requests are welcomed!
 
 # License
+
 MIT
